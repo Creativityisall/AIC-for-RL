@@ -1,0 +1,11 @@
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, ADM Loss: 2.1670, State Loss: 1.0244, Reward Loss: 1.1426
+logger_manager: INFO     Epoch 500, ADM Loss: -0.1280, State Loss: -0.9932, Reward Loss: 0.8652
+logger_manager: INFO     Epoch 1000, ADM Loss: -2.3355, State Loss: -3.1462, Reward Loss: 0.8107
+logger_manager: INFO     Epoch 1500, ADM Loss: -2.7767, State Loss: -3.4498, Reward Loss: 0.6731
+logger_manager: INFO     Epoch 2000, ADM Loss: -1.8838, State Loss: -2.6706, Reward Loss: 0.7868
+logger_manager: INFO     Epoch 2500, ADM Loss: -2.7498, State Loss: -3.5358, Reward Loss: 0.7860
+logger_manager: INFO     Epoch 3000, ADM Loss: -2.7968, State Loss: -3.5149, Reward Loss: 0.7181
+logger_manager: INFO     Epoch 3500, ADM Loss: -2.9105, State Loss: -3.6298, Reward Loss: 0.7193
+logger_manager: INFO     Epoch 4000, ADM Loss: -2.8920, State Loss: -3.6799, Reward Loss: 0.7880
+logger_manager: INFO     Epoch 4500, ADM Loss: -2.5335, State Loss: -3.2134, Reward Loss: 0.6799
