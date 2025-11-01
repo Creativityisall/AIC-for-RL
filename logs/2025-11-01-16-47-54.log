@@ -1,0 +1,8 @@
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, Loss: 0.5091155052185059
+logger_manager: INFO     Epoch 10, Loss: 0.4831898629665375
+logger_manager: INFO     Epoch 20, Loss: 0.45901320576667787
+logger_manager: INFO     Epoch 30, Loss: 0.4554203927516937
+logger_manager: INFO     Epoch 40, Loss: 0.44079264998435974
+logger_manager: INFO     Training complete, models saved.

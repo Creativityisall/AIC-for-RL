@@ -1,0 +1,24 @@
+logger_manager: INFO     Using device: cuda
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, Loss: 0.49083215594291685
+logger_manager: INFO     Epoch 100, Loss: 0.3991389870643616
+logger_manager: INFO     Epoch 200, Loss: 0.3934950649738312
+logger_manager: INFO     Epoch 300, Loss: 0.36552721858024595
+logger_manager: INFO     Epoch 400, Loss: 0.3634932577610016
+logger_manager: INFO     Epoch 500, Loss: 0.3564541280269623
+logger_manager: INFO     Epoch 600, Loss: 0.36990606784820557
+logger_manager: INFO     Epoch 700, Loss: 0.34548216462135317
+logger_manager: INFO     Epoch 800, Loss: 0.36156883239746096
+logger_manager: INFO     Epoch 900, Loss: 0.3648110210895538
+logger_manager: INFO     Epoch 1000, Loss: 0.339813107252121
+logger_manager: INFO     Epoch 1100, Loss: 0.3369619846343994
+logger_manager: INFO     Epoch 1200, Loss: 0.3715203046798706
+logger_manager: INFO     Epoch 1300, Loss: 0.3802701413631439
+logger_manager: INFO     Epoch 1400, Loss: 0.33554589152336123
+logger_manager: INFO     Epoch 1500, Loss: 0.33487917184829713
+logger_manager: INFO     Epoch 1600, Loss: 0.328660660982132
+logger_manager: INFO     Epoch 1700, Loss: 0.3290620267391205
+logger_manager: INFO     Epoch 1800, Loss: 0.3544671058654785
+logger_manager: INFO     Epoch 1900, Loss: 0.3126567780971527
+logger_manager: INFO     Training complete, models saved.

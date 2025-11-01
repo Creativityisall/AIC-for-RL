@@ -1,0 +1,2 @@
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000

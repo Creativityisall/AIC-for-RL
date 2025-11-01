@@ -1,0 +1,22 @@
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, ADM Loss: 2.4071, State Loss: 1.3990, Reward Loss: 1.0080
+logger_manager: INFO     Epoch 500, ADM Loss: 1.1694, State Loss: 0.5813, Reward Loss: 0.5879
+logger_manager: INFO     Epoch 1000, ADM Loss: 1.1637, State Loss: 0.5745, Reward Loss: 0.5890
+logger_manager: INFO     Epoch 1500, ADM Loss: 1.1149, State Loss: 0.5455, Reward Loss: 0.5692
+logger_manager: INFO     Epoch 2000, ADM Loss: 1.1333, State Loss: 0.5518, Reward Loss: 0.5813
+logger_manager: INFO     Epoch 2500, ADM Loss: 1.1276, State Loss: 0.5435, Reward Loss: 0.5840
+logger_manager: INFO     Epoch 3000, ADM Loss: 1.1292, State Loss: 0.5451, Reward Loss: 0.5839
+logger_manager: INFO     Epoch 3500, ADM Loss: 1.1150, State Loss: 0.5431, Reward Loss: 0.5717
+logger_manager: INFO     Epoch 4000, ADM Loss: 1.1186, State Loss: 0.5412, Reward Loss: 0.5772
+logger_manager: INFO     Epoch 4500, ADM Loss: 1.1068, State Loss: 0.5425, Reward Loss: 0.5641
+logger_manager: INFO     Epoch 5000, ADM Loss: 1.1134, State Loss: 0.5406, Reward Loss: 0.5726
+logger_manager: INFO     Epoch 5500, ADM Loss: 1.1303, State Loss: 0.5421, Reward Loss: 0.5879
+logger_manager: INFO     Epoch 6000, ADM Loss: 1.1079, State Loss: 0.5413, Reward Loss: 0.5664
+logger_manager: INFO     Epoch 6500, ADM Loss: 1.1060, State Loss: 0.5402, Reward Loss: 0.5656
+logger_manager: INFO     Epoch 7000, ADM Loss: 1.1197, State Loss: 0.5406, Reward Loss: 0.5789
+logger_manager: INFO     Epoch 7500, ADM Loss: 1.1154, State Loss: 0.5403, Reward Loss: 0.5749
+logger_manager: INFO     Epoch 8000, ADM Loss: 1.1036, State Loss: 0.5400, Reward Loss: 0.5634
+logger_manager: INFO     Epoch 8500, ADM Loss: 1.1094, State Loss: 0.5402, Reward Loss: 0.5689
+logger_manager: INFO     Epoch 9000, ADM Loss: 1.1225, State Loss: 0.5399, Reward Loss: 0.5824
+logger_manager: INFO     Epoch 9500, ADM Loss: 1.1071, State Loss: 0.5398, Reward Loss: 0.5671

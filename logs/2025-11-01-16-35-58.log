@@ -1,0 +1,16 @@
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Epoch 0, Loss: None
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Model buffer size after rollout: 25600
+logger_manager: INFO     Epoch 10, Loss: None
+logger_manager: INFO     Model buffer size after rollout: 25600

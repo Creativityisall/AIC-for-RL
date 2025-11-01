@@ -1,0 +1,9 @@
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, ADM Loss: 2.4559, State Loss: 1.5661, Reward Loss: 0.8898
+logger_manager: INFO     Epoch 500, ADM Loss: -2.6327, State Loss: -1.7444, Reward Loss: -0.8984
+logger_manager: INFO     Epoch 1000, ADM Loss: -2.4470, State Loss: -1.5371, Reward Loss: -0.9202
+logger_manager: INFO     Epoch 1500, ADM Loss: -2.2412, State Loss: -1.3240, Reward Loss: -0.9273
+logger_manager: INFO     Epoch 2000, ADM Loss: -3.2377, State Loss: -2.1955, Reward Loss: -1.0540
+logger_manager: INFO     Epoch 2500, ADM Loss: -2.8974, State Loss: -1.8733, Reward Loss: -1.0361
+logger_manager: INFO     Epoch 3000, ADM Loss: -3.3963, State Loss: -2.2765, Reward Loss: -1.1319

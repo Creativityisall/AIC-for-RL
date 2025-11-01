@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from torch.distributions import Normal
@@ -10,6 +11,35 @@ from tqdm import tqdm
 from logger_manager import logger
 
 ### Model ###
+class Mlp(nn.Module):
+    def __init__(self,
+                 input_dim: int = 150,
+                 hidden_dim: int = 256,
+                 output_dim: int = 3):
+        super().__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc3 = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
+    
+    def train_epoch(self, batch, optimizer):
+        self.train()
+        obs = batch['s']
+        act = batch['a']
+
+        pred = self.forward(obs)
+        loss = F.mse_loss(pred, act)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        return loss.item()
+
+
 class ADM(nn.Module):
     def __init__(self, state_dim, action_dim, max_backtrack_len=5, hidden_dim=256):
         super(ADM, self).__init__()
@@ -23,14 +53,17 @@ class ADM(nn.Module):
         self.gru = nn.GRU(
             input_size=hidden_dim * 2,  # 状态嵌入 + 动作嵌入
             hidden_size=hidden_dim,
-            num_layers=1,
-            batch_first=True  # 输入格式：(batch, seq_len, hidden_dim)
+            num_layers=2,
+            batch_first=True,  # 输入格式：(batch, seq_len, hidden_dim)
+            dropout=0.1
         )
 
         self.output_proj = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim*2),  # 增加中间层维度
             nn.ReLU(),
-            nn.Linear(hidden_dim, 2 * (state_dim + 1))  # 状态(均值+标准差) + 奖励(均值+标准差)
+            nn.Linear(hidden_dim*2, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 2 * (state_dim + 1))
         )
     
     def forward(self, state, action_seq):
@@ -43,16 +76,16 @@ class ADM(nn.Module):
         gru_final = gru_out[:, -1, :]
         
         out = self.output_proj(gru_final)
+
         state_mean = out[:, :self.state_dim]
-        
-        # 修复：确保标准差数值稳定
         state_log_std = torch.tanh(out[:, self.state_dim:2 * self.state_dim])  # 限制范围
         state_std = torch.exp(state_log_std) * 0.5 + 0.5
         
         reward_mean = out[:, 2 * self.state_dim:2 * self.state_dim + 1]
+
         reward_log_std = torch.tanh(out[:, 2 * self.state_dim + 1:])
         reward_std = torch.exp(reward_log_std) * 0.5 + 0.5
-        
+
         return state_mean, state_std, reward_mean, reward_std
     
     def sample_next(self, state, action_seq):
@@ -118,21 +151,28 @@ class ADMPO_OFF:
             max_backtrack_len=5, 
             hidden_dim=256, 
             lr_adm=3e-4,
+            weight_decay=1e-5,
             beta=2.5,
+            T_max=1000,
+            device='cuda' if torch.cuda.is_available() else 'cpu'
         ):
+        self.device = device
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.max_backtrack_len = max_backtrack_len
         self.beta = beta
         self.loss_fn = nn.MSELoss()
 
-        self.adm = ADM(state_dim, action_dim, max_backtrack_len, hidden_dim)
-        self.policy = policy if policy is not None else nn.Linear(state_dim, action_dim)
+        self.adm = ADM(state_dim, action_dim, max_backtrack_len, hidden_dim).to(device)
+        self.policy = policy.to(device) if policy is not None else nn.Linear(state_dim, action_dim).to(device)
 
-        self.adm_opt = optim.Adam(self.adm.parameters(), lr=lr_adm)
+        self.adm_opt = optim.Adam(self.adm.parameters(), lr=lr_adm, weight_decay=weight_decay)
         self.policy_opt = policy_opt if policy_opt is not None else optim.Adam(self.policy.parameters(), lr=lr_adm)
 
-    def train_adm(self, replay_buffer, batch_size=256, epochs=10):
+        self.adm_scheduler = optim.lr_scheduler.CosineAnnealingLR(self.adm_opt, T_max=T_max)
+        self.policy_scheduler = optim.lr_scheduler.CosineAnnealingLR(self.policy_opt, T_max=T_max)
+
+    def train_adm(self, replay_buffer, batch_size=256, epochs=10, std_penalty_coef=0.01):
         for idx in tqdm(range(epochs), desc="Training ADM"):
             # 采样批量数据：(s_t, a_t:t+k-1, s_t+k, r_t+k)，k为随机回溯长度
             batch = replay_buffer.sample(batch_size, self.max_backtrack_len)
@@ -155,7 +195,7 @@ class ADMPO_OFF:
             loss_r = - r_dist.log_prob(r_tk).mean()  # 奖励预测损失
 
             # 添加标准差正则化，防止过小
-            std_penalty = 0.1 * torch.exp(-s_std * 10).mean() + 0.1 * torch.exp(-r_std * 10).mean()
+            std_penalty = std_penalty_coef * (torch.exp(-s_std * 10).mean() + torch.exp(-r_std * 10).mean())
 
             loss_adm = loss_s + loss_r + std_penalty
 
@@ -168,14 +208,14 @@ class ADMPO_OFF:
             if idx % 500 == 0:
                 logger.info(f"Epoch {idx}, ADM Loss: {loss_adm.item():.4f}, State Loss: {loss_s.item():.4f}, Reward Loss: {loss_r.item():.4f}")
 
-    def model_rollout(self, initial_state, rollout_len=10):
+    def model_rollout(self, initial_state, model_buffer, rollout_len=10):
         """简化的模型rollout实现"""
         batch_size = initial_state.shape[0]
-        current_s = initial_state
+        current_s = initial_state.to(self.device)
         
         # 初始化动作历史
-        action_history = torch.zeros(batch_size, self.max_backtrack_len, self.action_dim)
-        
+        action_history = torch.zeros(batch_size, self.max_backtrack_len, self.action_dim).to(self.device)
+
         for step in range(rollout_len):
             # 1. 策略采样动作
             with torch.no_grad():
@@ -200,34 +240,60 @@ class ADMPO_OFF:
             r_penalized = r_raw - self.beta * uncertainty
             
             # 6. 存储到模型buffer
-            self.model_buffer.add(
-                current_s.cpu().numpy(),
-                action.cpu().numpy(),
-                s_next.detach().cpu().numpy(),
-                r_penalized.detach().cpu().numpy(),
-                np.zeros((batch_size, 1))
-            )
+            for i in range(batch_size):
+                model_buffer.add(
+                    current_s[i].cpu().detach().numpy(),
+                    action[i].cpu().detach().numpy(),
+                    s_next[i].cpu().detach().numpy(),
+                    r_penalized[i].cpu().detach().numpy(),
+                    done = np.array([0.0])
+                )
             
             current_s = s_next.detach()
 
     def train_policy(self, real_buffer, model_buffer, batch_size=256, epochs=5):
-        for _ in tqdm(range(epochs), desc="Training Policy"):
+        total_loss = 0.0
+        for _ in range(epochs):
             batch_real = real_buffer.sample(batch_size // 2)
             batch_model = model_buffer.sample(batch_size // 2)
             batch = {
-                's': torch.cat([batch_real['s'], batch_model['s']], dim=0),
-                'a': torch.cat([batch_real['a'], batch_model['a']], dim=0),
-                'r': torch.cat([batch_real['r'], batch_model['r']], dim=0),
-                's_next': torch.cat([batch_real['s_next'], batch_model['s_next']], dim=0),
-                'done': torch.cat([batch_real['done'], batch_model['done']], dim=0)
+                's': torch.cat([batch_real['s'], batch_model['s']], dim=0).to(self.device),
+                'a': torch.cat([batch_real['a'], batch_model['a']], dim=0).to(self.device),
+                'r': torch.cat([batch_real['r'], batch_model['r']], dim=0).to(self.device),
+                's_next': torch.cat([batch_real['s_next'], batch_model['s_next']], dim=0).to(self.device),
+                'done': torch.cat([batch_real['done'], batch_model['done']], dim=0).to(self.device)
             }
-            self.policy.train_epoch(batch, self.policy_opt)
+            loss = self.policy.train_epoch(batch, self.policy_opt)
+            total_loss += loss
+
+        return total_loss / epochs
+    
+    def evaluate_policy(self, eval_buffer, batch_size=256):
+        self.policy.eval()
+        total_loss = 0.0
+        num_batches = eval_buffer.size // batch_size
+        with torch.no_grad():
+            for _ in tqdm(range(num_batches), desc="Evaluating Policy"):
+                batch = eval_buffer.sample(batch_size)
+                s = batch['s'].to(self.device)
+                a = batch['a'].to(self.device)
+
+                pred_a = self.policy(s)
+                loss = self.loss_fn(pred_a, a)
+                total_loss += loss.item()
+        return total_loss / num_batches
 
     def save_adm(self, filepath):
         self.adm.save(filepath+"_adm.pth")
 
     def load_adm(self, filepath):
         self.adm.load(filepath+"_adm.pth")
+
+    def save_policy(self, filepath):
+        torch.save(self.policy.state_dict(), filepath+"_policy.pth")
+
+    def load_policy(self, filepath):
+        self.policy.load_state_dict(torch.load(filepath+"_policy.pth"), self.device)
 
 ### Buffer ###
 class ReplayBuffer:
@@ -290,6 +356,10 @@ class ReplayBuffer:
                 's_tk': torch.stack(s_tk),  # (batch, state_dim)
                 'r_tk': torch.stack(r_tk),  # (batch, 1)
             }
+        
+    def clear(self):
+        self.ptr = 0
+        self.size = 0
     
 ### Utilities ###
 def to_torch(data):
@@ -341,24 +411,118 @@ def normalize_data(buffer):
 
     logger.info("Data normalization complete.")
 
-if __name__ == "__main__":
+def gen_main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"Using device: {device}")
     real_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
     model_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
     load_data("./data.csv", real_buffer)
     normalize_data(real_buffer)
-
     logger.info(f"Real buffer size: {real_buffer.size}")
+
+    # 加载预训练策略
     trainer = ADMPO_OFF(
         state_dim=5,
         action_dim=3,
-        policy=None,  # 替换为实际策略网络
-        policy_opt=None,
-        max_backtrack_len=5,
-        hidden_dim=256,
-        lr_adm=1e-5,
-        beta=2.5
+        policy=policy,
+        policy_opt=policy_opt,
+        max_backtrack_len=10,
+        hidden_dim=516,
+        lr_adm=3e-4,
+        beta=2.5,
+        T_max=5000,
+        device=device
     )
 
     # 训练ADM
-    trainer.train_adm(real_buffer, batch_size=256, epochs=5000)
+    trainer.train_adm(real_buffer, batch_size=512, epochs=10000, std_penalty_coef=0.01)
     trainer.save_adm("./checkpoints/model")
+
+
+def train_main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"Using device: {device}")
+    real_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
+    model_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
+    load_data("./data.csv", real_buffer)
+    normalize_data(real_buffer)
+    logger.info(f"Real buffer size: {real_buffer.size}")
+
+    # 加载Policy
+    policy = Mlp(input_dim=5, hidden_dim=256, output_dim=3)
+    policy_opt = optim.Adam(policy.parameters(), lr=3e-4)
+
+    # 加载预训练策略
+    trainer = ADMPO_OFF(
+        state_dim=5,
+        action_dim=3,
+        policy=policy,
+        policy_opt=policy_opt,
+        max_backtrack_len=10,
+        hidden_dim=516,
+        lr_adm=3e-4,
+        beta=2.5,
+        T_max=5000,
+        device=device
+    )
+
+    # 加载预训练ADM
+    trainer.load_adm("./checkpoints/model")
+    # 进行模型rollout并训练策略
+    for epoch in tqdm(range(2000), desc="Overall Training"):
+        # 重置buffer
+        model_buffer.clear()
+
+        # 模型rollout
+        initial_states = real_buffer.s[torch.randint(0, real_buffer.size, (256,))]
+        trainer.model_rollout(initial_states, model_buffer, rollout_len=10)
+
+        # 训练策略
+        loss = trainer.train_policy(real_buffer, model_buffer, batch_size=256, epochs=5)
+        trainer.policy_scheduler.step()
+
+        if epoch % 100 == 0:
+            print()
+            logger.info(f"Epoch {epoch}, Loss: {loss}")
+
+    trainer.save_policy("./checkpoints/model")
+    logger.info("Training complete, models saved.")
+
+
+def eval_main():
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    logger.info(f"Using device: {device}")
+    real_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
+    model_buffer = ReplayBuffer(state_dim=5, action_dim=3, max_size=int(1e6))
+    load_data("./data.csv", real_buffer)
+    normalize_data(real_buffer)
+    logger.info(f"Real buffer size: {real_buffer.size}")
+
+    # 加载Policy
+    policy = Mlp(input_dim=5, hidden_dim=256, output_dim=3)
+    policy_opt = optim.Adam(policy.parameters(), lr=3e-4)
+
+    # 加载预训练策略
+    trainer = ADMPO_OFF(
+        state_dim=5,
+        action_dim=3,
+        policy=policy,
+        policy_opt=policy_opt,
+        max_backtrack_len=10,
+        hidden_dim=516,
+        lr_adm=3e-4,
+        beta=2.5,
+        T_max=5000,
+        device=device
+    )
+
+    # 加载预训练ADM和Policy
+    trainer.load_policy("./checkpoints/model")
+    eval_loss = trainer.evaluate_policy(real_buffer, batch_size=256)
+    logger.info(f"Evaluation Loss: {eval_loss}")
+
+if __name__ == "__main__":
+    # train_main()
+    eval_main()
+    # gen_main()
+

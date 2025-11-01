@@ -1,5 +1,7 @@
+from tqdm import tqdm
+
 from main import ADM
-from baseline import PolicyAgent_18, PolicyAgent_19
+from baseline_models.v1.agent import PolicyAgent, MODEL_DIR
 
 def run(env, agent):
     obs = env.reset()
@@ -14,15 +16,15 @@ def run(env, agent):
     return total_reward
 
 if __name__ == "__main__":
-    env = ADM(state_dim=5, action_dim=3)
+    env = ADM(state_dim=5, action_dim=3, hidden_dim=516)
     env.load("./checkpoints/model_adm.pth")
-    agent1 = PolicyAgent_18("model_18.pth")
-    agent2 = PolicyAgent_19("model_19.pth")
-    total_reward1 = 0
-    total_reward2 = 0
+
+    agent = PolicyAgent()
+    print("Loading agent from:", MODEL_DIR)
+    agent.reset()
+
+    total_reward = 0
     total_episodes = 100
-    for episode in range(total_episodes):
-        total_reward1 += run(env, agent1)
-        total_reward2 += run(env, agent2)
-    print(f"Average Reward for Agent 18 : {total_reward1 / total_episodes}")
-    print(f"Average Reward for Agent 19 : {total_reward2 / total_episodes}")
+    for episode in tqdm(range(total_episodes), desc="Episodes"):
+        total_reward += run(env, agent)
+    print(f"Average Reward for Agent 18 : {total_reward / total_episodes}")

@@ -1,0 +1,4 @@
+logger_manager: INFO     Using device: cuda
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Evaluation Loss: 0.684927923251421

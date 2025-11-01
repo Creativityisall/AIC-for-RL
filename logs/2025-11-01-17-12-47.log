@@ -1,0 +1,8 @@
+logger_manager: INFO     Using device: cuda
+logger_manager: INFO     Data normalization complete.
+logger_manager: INFO     Real buffer size: 100000
+logger_manager: INFO     Epoch 0, Loss: 0.500445157289505
+logger_manager: INFO     Epoch 10, Loss: 0.46421265602111816
+logger_manager: INFO     Epoch 20, Loss: 0.457101434469223
+logger_manager: INFO     Epoch 30, Loss: 0.46930084824562074
+logger_manager: INFO     Epoch 40, Loss: 0.4419623851776123
